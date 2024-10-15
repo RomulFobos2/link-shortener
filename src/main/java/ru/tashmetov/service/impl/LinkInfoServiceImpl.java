@@ -4,34 +4,65 @@ import org.apache.commons.text.RandomStringGenerator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ru.tashmetov.dto.CreateLinkInfoRequest;
+import ru.tashmetov.exception.NotFoundException;
+import ru.tashmetov.mapper.LinkInfoMapper;
+import ru.tashmetov.model.LinkInfo;
+import ru.tashmetov.model.LinkInfoResponse;
+import ru.tashmetov.repository.LinkInfoRepository;
 import ru.tashmetov.service.LinkInfoService;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class LinkInfoServiceImpl implements LinkInfoService {
 
     private final int LINK_LENGTH;
 
-    private Map<String, CreateLinkInfoRequest> linkInfoRequestMap = new HashMap<>();
+    private final LinkInfoRepository linkInfoRepository;
 
-    public LinkInfoServiceImpl(@Value("${link.length}") int LINK_LENGTH) {
+    public LinkInfoServiceImpl(@Value("${link.length}") int LINK_LENGTH, LinkInfoRepository linkInfoRepository) {
         this.LINK_LENGTH = LINK_LENGTH;
+        this.linkInfoRepository = linkInfoRepository;
     }
 
     @Override
-    public String generateLink(CreateLinkInfoRequest request) {
-        String link = createLink(LINK_LENGTH);
-        linkInfoRequestMap.put(link, request);
-        return link;
+    public LinkInfoResponse createLinkInfo(CreateLinkInfoRequest request) {
+        LinkInfoResponse linkInfoResponse = new LinkInfoResponse();
+
+        linkInfoResponse.setLink(request.getLink());
+        linkInfoResponse.setEndTime(request.getEndTime());
+        linkInfoResponse.setDescription(request.getDescription());
+        linkInfoResponse.setActive(request.getActive());
+        linkInfoResponse.setShortLink(createLink(LINK_LENGTH));
+
+        return linkInfoResponse;
     }
 
-    private String createLink(int length){
+    @Override
+    public LinkInfoResponse getByShortLink(String shortLink) throws NotFoundException {
+        LinkInfo linkInfo = linkInfoRepository.findByShortLink(shortLink);
+        if(linkInfo == null){
+            throw new NotFoundException("Для короткой ссылки " + shortLink + " значение в репозитории не найдено.");
+        }
+        return LinkInfoMapper.toResponse(linkInfo);
+    }
+
+    @Override
+    public List<LinkInfoResponse> findByFilter() {
+        return linkInfoRepository.findAll().stream()
+                .map(LinkInfoMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    private String createLink(int length) {
         RandomStringGenerator generator = RandomStringGenerator.builder()
                 .withinRange('0', 'z')
                 .filteredBy(Character::isLetterOrDigit)
                 .get();
         return generator.generate(length);
     }
+
 }
