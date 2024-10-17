@@ -42,11 +42,9 @@ public class LinkInfoServiceImpl implements LinkInfoService {
     }
 
     @Override
-    public LinkInfoResponse getByShortLink(String shortLink) throws NotFoundException {
-        LinkInfo linkInfo = linkInfoRepository.findByShortLink(shortLink);
-        if(linkInfo == null){
-            throw new NotFoundException("Для короткой ссылки " + shortLink + " значение в репозитории не найдено.");
-        }
+    public LinkInfoResponse getByShortLink(String shortLink) {
+        LinkInfo linkInfo = linkInfoRepository.findByShortLink(shortLink)
+                .orElseThrow(() -> new NotFoundException("Для короткой ссылки " + shortLink + " значение в репозитории не найдено."));
         return LinkInfoMapper.toResponse(linkInfo);
     }
 
